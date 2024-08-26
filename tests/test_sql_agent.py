@@ -1,10 +1,9 @@
 import pytest
-from langchain.callbacks.base import BaseCallbackHandler
 from langchain_community.utilities.sql_database import SQLDatabase
 from langchain_openai import ChatOpenAI
 from langchain_community.agent_toolkits import create_sql_agent
 
-from scripts.sql_handler import BaseCallbackHandler
+from scripts.sql_handler import SQLHandler
 
 from dotenv import load_dotenv
 
@@ -20,19 +19,6 @@ gpt35 = ChatOpenAI(model="gpt-3.5-turbo", temperature=0)
 sql_agent = create_sql_agent(
     gpt35, db = db, agent_type = "openai-tools", verbose = True
 )
-
-
-class SQLHandler(BaseCallbackHandler):
-    def __init__(self):
-        self.sql_result = None
-
-    def on_agent_action(self, action, **kwargs):
-        """Run on agent action. if the tool being used is sql_db_query,
-         it means we're submitting the sql and we can 
-         record it as the final sql"""
-
-        if action.tool == "sql_db_query":
-            self.sql_result = action.tool_input
 
 
 # Test cases
