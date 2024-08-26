@@ -4,6 +4,8 @@ from langchain_community.utilities.sql_database import SQLDatabase
 from langchain_openai import ChatOpenAI
 from langchain_community.agent_toolkits import create_sql_agent
 
+from scripts.sql_handler import BaseCallbackHandler
+
 from dotenv import load_dotenv
 
 load_dotenv()
