@@ -1,0 +1,12 @@
+python-dotenv                   
+gradio
+llama-index==0.10.68
+llama-index-llms-databrick==0.1.1                    
+llama-index-llms-openai==0.1.31 
+llama-index-embeddings-langchain==0.1.2                    
+llama-index-postprocessor-cohere-rerank==0.1.7                    
+llama-index-retrievers-bm25==0.2.0                    
+langchain==0.2.14                   
+langchain-huggingface==0.0.3                  
+langchain-community==0.2.12
+langchain-openai==0.1.22
