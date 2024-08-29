@@ -29,22 +29,41 @@ Settings.llm = Databricks(
 
 # Setup embedding model
 Settings.embed_model = LangchainEmbedding(
-    HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
+    HuggingFaceEmbeddings(model_name="BAAI/bge-small-en-v1.5")
 )
 
 # Setup Pinecone vector store
 pc = Pinecone(api_key=PINECONE_API_KEY)
-pinecone_index = pc.Index("sidindex")
-vector_store = PineconeVectorStore(pinecone_index=pinecone_index, text_key="text")
+pinecone_index = pc.Index("sidindex2")
+vector_index = PineconeVectorStore(pinecone_index=pinecone_index, text_key="text")
 
 # Setup Cohere reranker
-cohere_rerank = CohereRerank(api_key=COHERE_API_KEY, top_n=10)
+cohere_rerank = CohereRerank(api_key=COHERE_API_KEY, top_n=3)
 
 # Initialize the query engine with the vector store and reranker
-query_engine = VectorStoreIndex.from_vector_store(vector_store).as_query_engine(
-    similarity_top_k=20, node_postprocessors=[cohere_rerank]
+query_engine = VectorStoreIndex.from_vector_store(vector_index).as_query_engine(
+    similarity_top_k=6, node_postprocessors=[cohere_rerank]
 )
 
+new_qa_tmpl = (
+    "En te basant sur le context ci-dessous relatif à la thèse du Dr Sid Ahmed Ferroukhi sur la sécurité alimentaire en Algérie.\n"
+    "---------------------\n"
+    "{context_str}\n"
+    "---------------------\n"
+    "Compte tenu des informations contextuelles et non des connaissances préalables"
+    "Répond à la requête suivante de manière bien structurée et détaillée,"
+    "en fournissant le maximum d'informations possibles sur le contexte ?" 
+    "Veuillez également indiquer clairement la section du document ou du texte"
+    "d'où provient l'extrait que vous utilisez pour votre réponse, en précisant le numéro de la section" 
+    "(par exemple : section 1.1.1)"
+    "Query: {query_str}\n"
+    "Answer: "
+)
+
+
+query_engine.update_prompts(
+    {"response_synthesizer:text_qa_template": new_qa_tmpl}
+)
 
 # Modify the response generator to utilize the vector store query engine
 def generate_response(message: str, history: list):
