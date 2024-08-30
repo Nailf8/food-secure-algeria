@@ -1,5 +1,6 @@
-import gradio as gr
 import os
+import argparse
+import gradio as gr
 from dotenv import load_dotenv
 
 from langchain_huggingface import HuggingFaceEmbeddings
@@ -9,6 +10,7 @@ from llama_index.core import Settings, VectorStoreIndex
 from llama_index.vector_stores.pinecone import PineconeVectorStore
 
 from llama_index.llms.databricks import Databricks
+from llama_index.llms.openai import OpenAI
 from llama_index.core.query_pipeline import InputComponent
 from llama_index.core.prompts import PromptTemplate
 from llama_index.postprocessor.cohere_rerank import CohereRerank
@@ -32,6 +34,23 @@ DATABRICKS_TOKEN = os.environ.get('DATABRICKS_TOKEN')
 COHERE_API_KEY = os.environ.get('COHERE_API_KEY')
 PINECONE_API_KEY = os.environ.get('PINECONE_API_KEY')
 
+# Function to choose LLM based on user input
+def choose_llm(model_choice: str):
+    if model_choice.lower() == "openai":
+        # Setup for OpenAI GPT-3.5
+        llm = OpenAI(model="gpt-4o-mini")
+
+    elif model_choice.lower() == "llama":
+        # Setup for Databricks Meta Llama
+        llm = Databricks(
+            model="databricks-meta-llama-3-1-70b-instruct",
+            api_key=DATABRICKS_TOKEN,
+            api_base="https://adb-7215147325717155.15.azuredatabricks.net/serving-endpoints",
+        )
+    else:
+        raise ValueError("Invalid model choice. Please choose either 'openai' or 'llama'.")
+    return llm
+
 
 # ---------------------------------------------- Index Setup ---------------------------------------------- #
 
@@ -48,10 +67,18 @@ index = PineconeVectorStore(pinecone_index=pinecone_index, text_key="text")
 
 # ------------------------------------------ Chat Pipeline Setup ------------------------------------------ #
 
-# First, we create an input component to capture the user query
+# Setup command-line argument parsing
+parser = argparse.ArgumentParser(description="Launch Gradio Chatbot with a chosen LLM")
+parser.add_argument("--model", type=str, choices=["openai", "llama"], required=True, help="Choose the LLM model: 'openai' or 'llama'")
+args = parser.parse_args()
+
+# Choose the LLM based on the provided argument
+llm = choose_llm(args.model)
+
+# Create the input component
 input_component = InputComponent()
 
-# Next, we use the LLM to rewrite a user query
+# Setup the query rewrite template
 rewrite = (
     "Please write a query to a semantic search engine using the current conversation.\n"
     "\n"
@@ -64,21 +91,15 @@ rewrite = (
 )
 rewrite_template = PromptTemplate(rewrite)
 
-llama3 = Databricks(
-    model="databricks-meta-llama-3-1-70b-instruct",
-    api_key=DATABRICKS_TOKEN,
-    api_base="https://adb-7215147325717155.15.azuredatabricks.net/serving-endpoints",
-)
-
-# using that, we will retrieve...
+# Create the retriever
 retriever = VectorStoreIndex.from_vector_store(index).as_retriever(similarity_top_k=5)
 
-# then postprocess/rerank with Cohere reranker
+# Setup postprocessor/reranker with Cohere
 reranker = CohereRerank(api_key=COHERE_API_KEY, top_n=2)
 
-# and finally generates the response using this component
+# Create the response component
 response_component = ResponseWithChatHistory(
-    llm=llama3,
+    llm=llm,
     system_prompt=(
         "You are Sid Ahmed Ferroukhi, an expert in food security policies and innovation. "
         "You will be provided with the previous chat history, as well as possibly relevant context, "
@@ -89,11 +110,11 @@ response_component = ResponseWithChatHistory(
     )
 )
 
-# pipeline builder
+# Pipeline setup
 pipeline = ChatPipeline()
-pipeline.add_components(input_component, rewrite_template, llama3, retriever, reranker, response_component)
+pipeline.add_components(input_component, rewrite_template, llm, retriever, reranker, response_component)
 
-# buffer to handle memory
+# Memory buffer setup
 pipeline_memory = ChatMemoryBuffer.from_defaults(token_limit=50000)
 
 # ------------------------------------------- SQL Agent Setup ------------------------------------------- #
@@ -102,11 +123,11 @@ pipeline_memory = ChatMemoryBuffer.from_defaults(token_limit=50000)
 db = SQLDatabase.from_uri("sqlite:///demo.db")
 
 # Here we use GPT 3.5 
-gpt35 = ChatOpenAI(model="gpt-3.5-turbo", temperature=0)
+llm_lc = ChatOpenAI(model="gpt-4o-mini", temperature=0)
 
 # Agent creation
 sql_agent = create_sql_agent(
-    gpt35, db = db, agent_type = "openai-tools", verbose = True
+    llm_lc, db = db, agent_type = "openai-tools", verbose = True
 )
 
 
@@ -149,7 +170,7 @@ def router_query(message: str, pipeline, agent):
         max_outputs=1
     )
     fmt_json_prompt = output_parser.format(fmt_prompt)
-    raw_output = llama3.complete(fmt_json_prompt)
+    raw_output = llm.complete(fmt_json_prompt)
     parsed = output_parser.parse(str(raw_output))
     
     if parsed.choice == 1:
