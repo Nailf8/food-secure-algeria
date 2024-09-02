@@ -38,6 +38,3 @@ Make sure you have installed make
 - run the fastAPI locally
   > make run-app
 
-
-From then, you can open the  to the local API at "http://127.0.0.1:8000/score" to get results. Please read the
-section Features/API/Data_Contracts to see how to make correct requests.
