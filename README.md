@@ -1,6 +1,6 @@
 # Introduction 
-Machine learning project to provide a document issue date prediction model.
-This project contains scripts to deploy the model into an AzureML endpoint.
+GenAI project to provide insight on Food Security Policies in Lagérie.
+This project contains scripts to deploy the app locally.
 
 # Project structure
 
