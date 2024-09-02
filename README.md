@@ -24,6 +24,8 @@ This project contains scripts to deploy the app locally.
 # Prerequisites
 
 Make sure you have installed make
+  > pip install make
+
 
 # Quick Start
 - Create the local environment:
@@ -34,7 +36,7 @@ Make sure you have installed make
   For a Venv env use
   > make initvenv
 
-- activate the environment (specified after env creation)
+- activate the environment (command specified after env creation)
 - run the fastAPI locally
   > make run-app
 
